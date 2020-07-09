@@ -6,7 +6,7 @@ const  outputFile = inputFile.substring(0,pointIndex)+'_processed'+inputFile.sub
 
 console.log('\r');
 console.log('\r');
-console.log(`geojson-lambert93-to-wgs84 will process your file`);
+console.log(`geojson-lambert72-to-wgs84 will process your file`);
 console.log(`Results will be stored in the same folder`);
 console.log('\r');
 
@@ -57,41 +57,76 @@ console.log('\r');
 
 
 //function definition
-function lambert93toWGPS(lambertE, lambertN) {
+function lambert72toWGPS(lambertE, lambertN) {
+  var x = lambertE
+  var y = lambertN
+  var LongRef = 0.076042943,
+  nLamb = 0.7716421928,
+  aCarre = Math.pow( 6378388, 2 ),
+  bLamb = 6378388 * ( 1 - ( 1 / 297 ) ),
+  eCarre = ( aCarre - Math.pow( bLamb, 2 ) ) / aCarre,
+  KLamb = 11565915.812935,
+  eLamb = Math.sqrt( eCarre ),
+  eSur2 = eLamb / 2,
+  Tan1 = ( x - 150000.01256 ) / ( 5400088.4378 - y ),
+  Lambda = LongRef + ( 1 / nLamb ) * ( 0.000142043 + Math.atan( Tan1 ) ),
+  RLamb = Math.sqrt( Math.pow( ( x - 150000.01256 ), 2 ) + Math.pow( ( 5400088.4378 - y ), 2 ) ),
+  TanZDemi = Math.pow( ( RLamb / KLamb ), ( 1 / nLamb ) ),
+  Lati1 = 2 * Math.atan( TanZDemi ),
+  Haut = 0,
+  eSin, Mult1, Mult2, Mult, LatiN, Diff, lat, lng,
+  Lat, Lng, LatWGS84, LngWGS84, DLat, DLng, Dh, dy, dx, dz, da, df, LWa, Rm, Rn,
+  LWb, LWf, LWe2, SinLat, SinLng, CoSinLat, CoSinLng, Adb;
+do {
+  eSin = eLamb * Math.sin( Lati1 );
+  Mult1 = 1 - eSin;
+  Mult2 = 1 + eSin;
+  Mult = Math.pow( ( Mult1 / Mult2 ), ( eLamb / 2 ) );
+  LatiN = ( Math.PI / 2 ) - ( 2 * ( Math.atan( TanZDemi * Mult ) ) );
+  Diff = LatiN - Lati1;
+  Lati1 = LatiN;
+} while( Math.abs( Diff ) > 0.0000000277777 );
+lat = ( LatiN * 180 ) / Math.PI;
+lng = ( Lambda * 180 ) / Math.PI;
 
-    var constantes = {
-        GRS80E: 0.081819191042816,
-        LONG_0: 3,
-        XS: 700000,
-        YS: 12655612.0499,
-        n: 0.7256077650532670,
-        C: 11754255.4261
-    }
+  Lat = ( Math.PI / 180 ) * lat;
+  Lng = ( Math.PI / 180 ) * lng;
 
-    var delX = lambertE - constantes.XS;
-    var delY = lambertN - constantes.YS;
-    var gamma = Math.atan(-delX / delY);
-    var R = Math.sqrt(delX * delX + delY * delY);
-    var latiso = Math.log(constantes.C / R) / constantes.n;
-    var sinPhiit0 = Math.tanh(latiso + constantes.GRS80E * Math.atanh(constantes.GRS80E * Math.sin(1)));
-    var sinPhiit1 = Math.tanh(latiso + constantes.GRS80E * Math.atanh(constantes.GRS80E * sinPhiit0));
-    var sinPhiit2 = Math.tanh(latiso + constantes.GRS80E * Math.atanh(constantes.GRS80E * sinPhiit1));
-    var sinPhiit3 = Math.tanh(latiso + constantes.GRS80E * Math.atanh(constantes.GRS80E * sinPhiit2));
-    var sinPhiit4 = Math.tanh(latiso + constantes.GRS80E * Math.atanh(constantes.GRS80E * sinPhiit3));
-    var sinPhiit5 = Math.tanh(latiso + constantes.GRS80E * Math.atanh(constantes.GRS80E * sinPhiit4));
-    var sinPhiit6 = Math.tanh(latiso + constantes.GRS80E * Math.atanh(constantes.GRS80E * sinPhiit5));
+  SinLat = Math.sin( Lat );
+  SinLng = Math.sin( Lng );
+  CoSinLat = Math.cos( Lat );
+  CoSinLng = Math.cos( Lng );
 
-    var longRad = Math.asin(sinPhiit6);
-    var latRad = gamma / constantes.n + constantes.LONG_0 / 180 * Math.PI;
+  dx = -125.8;
+  dy = 79.9;
+  dz = -100.5;
+  da = -251.0;
+  df = -0.000014192702;
 
-    var longitude = latRad / Math.PI * 180;
-    var latitude = longRad / Math.PI * 180;
+  LWf = 1 / 297;
+  LWa = 6378388;
+  LWb = ( 1 - LWf ) * LWa;
+  LWe2 = ( 2 * LWf ) - ( LWf * LWf );
+  Adb = 1 / ( 1 - LWf );
+
+  Rn = LWa / Math.sqrt( 1 - LWe2 * SinLat * SinLat );
+  Rm = LWa * ( 1 - LWe2 ) / Math.pow( ( 1 - LWe2 * Lat * Lat ), 1.5 );
+
+  DLat = -dx * SinLat * CoSinLng - dy * SinLat * SinLng + dz * CoSinLat;
+  DLat = DLat + da * ( Rn * LWe2 * SinLat * CoSinLat ) / LWa;
+  DLat = DLat + df * ( Rm * Adb + Rn / Adb ) * SinLat * CoSinLat;
+  DLat = DLat / ( Rm + Haut );
+
+  DLng = ( -dx * SinLng + dy * CoSinLng ) / ( ( Rn + Haut ) * CoSinLat );
+  Dh = dx * CoSinLat * CoSinLng + dy * CoSinLat * SinLng + dz * SinLat;
+  Dh = Dh - da * LWa / Rn + df * Rn * Lat * Lat / Adb;
+
+  LatWGS84 = ( ( Lat + DLat ) * 180 ) / Math.PI;
+  LngWGS84 = ( ( Lng + DLng ) * 180 ) / Math.PI;
 
     // return {longitude: longitude, latitude: latitude};
-    return [longitude,latitude]
+    return [LngWGS84,LatWGS84]
 }
-
-
 
 function transformFeature(json){
       let coord = json.geometry.coordinates;
@@ -101,7 +136,7 @@ function transformFeature(json){
       switch (arrayDepth) {
         case 1:
           console.log('Format type "Point" detected');
-          newCoordinates = lambert93toWGPS(coord[0], coord[1])
+          newCoordinates = lambert72toWGPS(coord[0], coord[1])
           fileToWrite = json
           fileToWrite.geometry.coordinates = newCoordinates;
           return fileToWrite;
@@ -110,7 +145,7 @@ function transformFeature(json){
           console.log('Format type "LineString" or "MultiPoint" detected');
           newCoordinates = [];
           for (var i = 0; i < coord.length; i++) {
-              newCoordinates[i] = lambert93toWGPS(coord[i][0], coord[i][1])
+              newCoordinates[i] = lambert72toWGPS(coord[i][0], coord[i][1])
           }
           fileToWrite = json
           fileToWrite.geometry.coordinates = newCoordinates;
@@ -122,7 +157,7 @@ function transformFeature(json){
           for (var i = 0; i < coord.length; i++) {
               newCoordinates[i] = []
               for (var j = 0; j < coord[i].length; j++) {
-                  newCoordinates[i][j] = lambert93toWGPS(coord[i][j][0], coord[i][j][1])
+                  newCoordinates[i][j] = lambert72toWGPS(coord[i][j][0], coord[i][j][1])
               }
           }
           fileToWrite = json
@@ -137,7 +172,7 @@ function transformFeature(json){
                 for (var j = 0; j < coord[i].length; j++) {
                     newCoordinates[i][j] = []
                     for (var k = 0; k < coord[i][j].length; k++) {
-                        newCoordinates[i][j][k] = lambert93toWGPS(coord[i][j][k][0], coord[i][j][k][1])
+                        newCoordinates[i][j][k] = lambert72toWGPS(coord[i][j][k][0], coord[i][j][k][1])
                     }
                 }
             }
