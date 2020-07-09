@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/guillim/npm-geojson-lambert93-to-wgs84.git"
+    "url": "git+https://github.com/turb-it/npm-geojson-lambert72-to-wgs84.git"
   },
   "keywords": [
     "lambert72",
